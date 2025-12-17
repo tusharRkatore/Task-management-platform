@@ -1,7 +1,8 @@
 // API Route Handler for individual tasks
-import { type NextRequest, NextResponse } from "next/server"
 import { TaskService } from "@/lib/services/task.service"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { type NextRequest, NextResponse } from "next/server"
+
 import { updateTaskSchema } from "@/lib/validation/task.schemas"
 import { ZodError } from "zod"
 
@@ -11,7 +12,7 @@ import { ZodError } from "zod"
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -78,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

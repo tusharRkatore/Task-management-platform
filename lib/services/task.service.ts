@@ -4,14 +4,14 @@
  * Implements validation, error handling, and orchestrates repository calls
  */
 import { TaskRepository } from "@/lib/repositories/task.repository"
+import type { DashboardStats, Task } from "@/lib/types/task"
 import {
   createTaskSchema,
   updateTaskSchema,
   type CreateTaskDTO,
-  type UpdateTaskDTO,
   type TaskFilterDTO,
+  type UpdateTaskDTO,
 } from "@/lib/validation/task.schemas"
-import type { Task, DashboardStats } from "@/lib/types/task"
 
 export class TaskService {
   /**

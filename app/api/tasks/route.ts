@@ -1,17 +1,17 @@
 // API Route Handler for tasks collection
-import { type NextRequest, NextResponse } from "next/server"
 import { TaskService } from "@/lib/services/task.service"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { createTaskSchema } from "@/lib/validation/task.schemas"
+import { type NextRequest, NextResponse } from "next/server"
 import { ZodError } from "zod"
 
 /**
  * GET /api/tasks
- * Fetch all tasks with optional filters
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/tasks
- * Create a new task
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -54,8 +54,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-
-    // Validate with Zod
     const validatedData = createTaskSchema.parse(body)
 
     const task = await TaskService.createTask(validatedData, user.id)
@@ -64,7 +62,10 @@ export async function POST(request: NextRequest) {
     console.error("[API] POST /api/tasks error:", error)
 
     if (error instanceof ZodError) {
-      return NextResponse.json({ error: "Validation error", details: error.errors }, { status: 400 })
+      return NextResponse.json(
+        { error: "Validation error", details: error.errors },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
