@@ -1,7 +1,7 @@
 # =========================
 # Node / Package managers
 # =========================
-node_modules/
+ node_modules/
 .pnpm-store/
 npm-debug.log*
 yarn-debug.log*
@@ -66,3 +66,4 @@ coverage/
 # =========================
 *.pem
 *.key
+node_modules

@@ -1,35 +1,44 @@
 import { createServerClient } from "@supabase/ssr"
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-export async function proxy(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_ENVSUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_ENVSUPABASE_ANON_KEY
+export async function proxy(req: NextRequest) {
+  const res = NextResponse.next()
 
-  // ✅ SILENT GUARD (no logging)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // ✅ Silent guard
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.next()
+    return res
   }
 
-  let response = NextResponse.next({ request })
-
-  createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        const cookieHeader = request.headers.get("cookie")
-        if (!cookieHeader) return []
-
-        return cookieHeader.split("; ").map((c) => {
-          const [name, ...rest] = c.split("=")
-          return { name, value: rest.join("=") }
-        })
+  const supabase = createServerClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      auth: {
+        persistSession: false,      // 🔒 CRITICAL
+        autoRefreshToken: false,    // 🔒 CRITICAL
+        detectSessionInUrl: false,  // 🔒 CRITICAL
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
-        })
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: () => {
+          // 🔒 BLOCK refresh-token writes completely
+        },
       },
-    },
-  })
+    }
+  )
 
-  return response
+  // ✅ Protect dashboard routes
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && req.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/auth/login", req.url))
+  }
+
+  return res
 }

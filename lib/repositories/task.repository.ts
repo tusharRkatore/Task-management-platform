@@ -1,73 +1,77 @@
-// API Route Handler for tasks collection
-import { TaskService } from "@/lib/services/task.service"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { createTaskSchema } from "@/lib/validation/task.schemas"
-import { type NextRequest, NextResponse } from "next/server"
-import { ZodError } from "zod"
+import type { Task, TaskFilterDTO } from "@/lib/types/task"
+import type { CreateTaskDTO } from "@/lib/validation/task.schemas"
 
-/**
- * GET /api/tasks
- */
-export async function GET(request: NextRequest) {
-  try {
+class TaskRepository {
+  async findAll(filters?: TaskFilterDTO): Promise<Task[]> {
     const supabase = await createServerSupabaseClient()
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    let query = supabase
+      .from("tasks")
+      .select("*")
+      .order("created_at", { ascending: false })
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const filters = {
-      status: searchParams.get("status") as any,
-      priority: searchParams.get("priority") as any,
-      search: searchParams.get("search") || undefined,
-      assigned_to_me: searchParams.get("assigned_to_me") === "true",
-      created_by_me: searchParams.get("created_by_me") === "true",
-      overdue: searchParams.get("overdue") === "true",
-    }
-
-    const tasks = await TaskService.getAllTasks(filters)
-    return NextResponse.json(tasks, { status: 200 })
-  } catch (error) {
-    console.error("[API] GET /api/tasks error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-/**
- * POST /api/tasks
- */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createServerSupabaseClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const validatedData = createTaskSchema.parse(body)
-
-    const task = await TaskService.createTask(validatedData, user.id)
-    return NextResponse.json(task, { status: 201 })
-  } catch (error) {
-    console.error("[API] POST /api/tasks error:", error)
-
-    if (error instanceof ZodError) {
-      return NextResponse.json(
-        { error: "Validation error", details: error.errors },
-        { status: 400 }
+    if (filters?.status) query = query.eq("status", filters.status)
+    if (filters?.priority) query = query.eq("priority", filters.priority)
+    if (filters?.search) {
+      query = query.or(
+        `title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
       )
     }
 
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const { data, error } = await query
+    if (error) throw error
+    return data ?? []
+  }
+
+  async findById(id: string): Promise<Task | null> {
+    const supabase = await createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  async create(dto: CreateTaskDTO, creatorId: string): Promise<Task> {
+    const supabase = await createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({ ...dto, creator_id: creatorId })
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  async update(id: string, dto: Partial<CreateTaskDTO>): Promise<Task> {
+    const supabase = await createServerSupabaseClient()
+    const { data, error } = await supabase
+      .from("tasks")
+      .update(dto)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  async delete(id: string): Promise<void> {
+    const supabase = await createServerSupabaseClient()
+    const { error } = await supabase.from("tasks").delete().eq("id", id)
+    if (error) throw error
+  }
+
+  async getStats() {
+    const supabase = await createServerSupabaseClient()
+    const { data } = await supabase.from("tasks").select("*")
+    return { totalTasks: data?.length ?? 0 }
   }
 }
+
+export default new TaskRepository()

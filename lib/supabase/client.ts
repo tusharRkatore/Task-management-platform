@@ -1,32 +1,17 @@
-import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
+"use client"
 
-let supabaseClient: SupabaseClient | null = null
+import { createBrowserClient } from "@supabase/ssr"
 
-/**
- * Supabase client for CLIENT COMPONENTS only
- */
-export function createClient(): SupabaseClient | null {
-  // ✅ Reuse singleton
-  if (supabaseClient) return supabaseClient
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error(
-      "❌ Supabase client env vars missing.\n" +
-        "➡ Required:\n" +
-        "   NEXT_PUBLIC_SUPABASE_URL\n" +
-        "   NEXT_PUBLIC_SUPABASE_ANON_KEY\n" +
-        "➡ Restart dev server after updating .env.local"
-    )
-    return null
-  }
-
-  supabaseClient = createSupabaseClient(
-    supabaseUrl,
-    supabaseAnonKey
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    }
   )
-
-  return supabaseClient
 }
